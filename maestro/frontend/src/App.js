@@ -1,30 +1,32 @@
-import React, { Suspense, useState, useRef, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
+import React, { Suspense, useState, useRef } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { EffectComposer, Bokeh } from '@react-three/postprocessing';
 import { Character } from './Character';
 import TemplateLibrary from './TemplateLibrary';
 import VideoFeed from './VideoFeed';
-import { lenses } from './lenses';
 import './App.css';
 
 function App() {
   const [characterPosition, setCharacterPosition] = useState([0, 0, 0]);
-  const [animation, setAnimation] = useState('idle');
-  const [animationSpeed, setAnimationSpeed] = useState(1);
+  const [animationPrompt, setAnimationPrompt] = useState('');
   const characterRef = useRef();
   const [videoTitle, setVideoTitle] = useState('');
   const [videoDescription, setVideoDescription] = useState('');
-  const [videos, setVideos] = useState([]);
-  const [contentVideoId, setContentVideoId] = useState('');
-  const [styleVideoId, setStyleVideoId] = useState('');
-  const [selectedLens, setSelectedLens] = useState(lenses[0]);
 
-  useEffect(() => {
-    fetch('/videos/')
-      .then((response) => response.json())
-      .then((data) => setVideos(data));
-  }, []);
+  const handleAnimationSubmit = async (e) => {
+    e.preventDefault();
+    const response = await fetch('/generate-animation/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt: animationPrompt }),
+    });
+    const data = await response.json();
+    // This is where you would apply the animation to the character.
+    // The exact implementation will depend on the format of the animation data.
+    console.log(data.animation);
+  };
 
   const handleVideoSubmit = async (e) => {
     e.preventDefault();
@@ -42,19 +44,6 @@ function App() {
     console.log(data);
   };
 
-  const handleStyleTransferSubmit = async (e) => {
-    e.preventDefault();
-    const response = await fetch('/style-transfer/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ content_video_id: contentVideoId, style_video_id: styleVideoId }),
-    });
-    const data = await response.json();
-    console.log(data);
-  };
-
   return (
     <div className="container">
       <h1>Maestro</h1>
@@ -63,7 +52,7 @@ function App() {
           <TemplateLibrary />
         </div>
         <div className="grid-item">
-          <VideoFeed videos={videos} />
+          <VideoFeed />
         </div>
         <div className="grid-item">
           <h2>Create a new video</h2>
@@ -83,50 +72,15 @@ function App() {
           </form>
         </div>
         <div className="grid-item">
-          <h2>Style Transfer</h2>
-          <form onSubmit={handleStyleTransferSubmit}>
-            <select value={contentVideoId} onChange={(e) => setContentVideoId(e.target.value)}>
-              <option value="">Select Content Video</option>
-              {videos.map((video) => (
-                <option key={video.id} value={video.id}>
-                  {video.title}
-                </option>
-              ))}
-            </select>
-            <select value={styleVideoId} onChange={(e) => setStyleVideoId(e.target.value)}>
-              <option value="">Select Style Video</option>
-              {videos.map((video) => (
-                <option key={video.id} value={video.id}>
-                  {video.title}
-                </option>
-              ))}
-            </select>
-            <button type="submit">Transfer Style</button>
-          </form>
-        </div>
-        <div className="grid-item">
           <div style={{ height: '400px' }}>
-            <Canvas camera={{ fov: selectedLens.props.fov }}>
+            <Canvas>
               <ambientLight />
               <pointLight position={[10, 10, 10]} />
               <Suspense fallback={null}>
-                <Character position={characterPosition} ref={characterRef} animation={animation} animationSpeed={animationSpeed} />
+                <Character position={characterPosition} ref={characterRef} />
               </Suspense>
               <OrbitControls />
-              <EffectComposer>
-                <Bokeh {...selectedLens.props} />
-              </EffectComposer>
             </Canvas>
-          </div>
-          <div>
-            <h2>Lenses</h2>
-            <select onChange={(e) => setSelectedLens(lenses[e.target.value])}>
-              {lenses.map((lens, index) => (
-                <option key={lens.name} value={index}>
-                  {lens.name}
-                </option>
-              ))}
-            </select>
           </div>
           <div>
             <h2>Controls</h2>
@@ -137,20 +91,15 @@ function App() {
           </div>
           <div>
             <h2>Animations</h2>
-            <button onClick={() => setAnimation('idle')}>Idle</button>
-            <button onClick={() => setAnimation('run')}>Run</button>
-            <button onClick={() => setAnimation('jump')}>Jump</button>
-            <div>
-              <label>Animation Speed</label>
+            <form onSubmit={handleAnimationSubmit}>
               <input
-                type="range"
-                min="0"
-                max="2"
-                step="0.1"
-                value={animationSpeed}
-                onChange={(e) => setAnimationSpeed(e.target.value)}
+                type="text"
+                value={animationPrompt}
+                onChange={(e) => setAnimationPrompt(e.target.value)}
+                placeholder="Enter a prompt to generate an animation"
               />
-            </div>
+              <button type="submit">Generate Animation</button>
+            </form>
           </div>
         </div>
       </div>

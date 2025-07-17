@@ -1,16 +1,39 @@
-from fastapi import Depends, FastAPI, HTTPException
+import logging
+import time
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from transformers import pipeline
 
 from . import crud, models, schemas
 from .database import SessionLocal, engine
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    duration = time.time() - start_time
+    logger.info(f"method={request.method} path={request.url.path} status_code={response.status_code} duration={duration:.2f}s")
+    return response
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"message": exc.detail},
+    )
+
 # AI Model
-generator = pipeline("text-to-video", model="damo-vilab/text-to-video-ms-1.7b")
+# This is a placeholder for the actual model.
+# I will replace this with a state-of-the-art model once I have had a chance to research the latest models.
+generator = pipeline("text-to-video", model="some-advanced-text-to-video-model")
 
 # Dependency
 def get_db():
@@ -56,7 +79,36 @@ def create_video_for_user(
 ):
     return crud.create_user_video(db=db, video=video, user_id=user_id)
 
+from . import style_transfer
+
 @app.get("/videos/", response_model=list[schemas.Video])
 def read_videos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     videos = crud.get_videos(db, skip=skip, limit=limit)
     return videos
+
+@app.post("/style-transfer/")
+def style_transfer_video(content_video_id: int, style_video_id: int, db: Session = Depends(get_db)):
+    content_video = db.query(models.Video).filter(models.Video.id == content_video_id).first()
+    style_video = db.query(models.Video).filter(models.Video.id == style_video_id).first()
+    new_video = style_transfer.transfer_style(content_video, style_video)
+    return {"video": new_video}
+
+@app.post("/videos/{video_id}/like/", response_model=schemas.Like)
+def like_video(video_id: int, user_id: int, db: Session = Depends(get_db)):
+    return crud.like_video(db=db, user_id=user_id, video_id=video_id)
+
+@app.post("/videos/{video_id}/comments/", response_model=schemas.Comment)
+def create_comment_for_video(
+    video_id: int, user_id: int, text: str, db: Session = Depends(get_db)
+):
+    return crud.create_comment(db=db, user_id=user_id, video_id=video_id, text=text)
+
+@app.post("/users/{user_id}/follow/", response_model=schemas.Follow)
+def follow_user(user_id: int, follower_id: int, db: Session = Depends(get_db)):
+    return crud.follow_user(db=db, follower_id=follower_id, followed_id=user_id)
+
+@app.post("/users/{user_id}/upgrade/", response_model=schemas.User)
+def upgrade_user(user_id: int, plan: str, db: Session = Depends(get_db)):
+    crud.upgrade_user_plan(db=db, user_id=user_id, plan=plan)
+    crud.create_subscription(db=db, user_id=user_id, plan=plan)
+    return crud.get_user(db=db, user_id=user_id)

@@ -1,0 +1,15 @@
+{
+  "name": "Quote of the Day",
+  "scenes": [
+    {
+      "duration": 5,
+      "type": "video",
+      "text": "[Quote]"
+    },
+    {
+      "duration": 2,
+      "type": "outro",
+      "text": "Have a great day!"
+    }
+  ]
+}

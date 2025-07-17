@@ -12,3 +12,13 @@ def create_user(db: Session, user: schemas.UserCreate):
     db.commit()
     db.refresh(db_user)
     return db_user
+
+def get_videos(db: Session, skip: int = 0, limit: int = 100):
+    return db.query(models.Video).offset(skip).limit(limit).all()
+
+def create_user_video(db: Session, video: schemas.VideoCreate, user_id: int):
+    db_video = models.Video(**video.dict(), owner_id=user_id)
+    db.add(db_video)
+    db.commit()
+    db.refresh(db_video)
+    return db_video

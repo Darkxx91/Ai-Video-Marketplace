@@ -1,1 +1,1 @@
-web: gunicorn main:app --root-path maestro/backend
+web: sh -c 'cd maestro/frontend && npm start & cd ../backend && uvicorn main:app --host=0.0.0.0 --port=${PORT:-5000}'

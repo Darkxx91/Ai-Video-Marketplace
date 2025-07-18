@@ -1,0 +1,30 @@
+{
+  "name": "Maestro",
+  "description": "The AI-powered virtual production studio for everyone.",
+  "repository": "https://github.com/your-username/maestro",
+  "logo": "https://cdn.jsdelivr.net/gh/heroku/heroku-button@latest/public/img/heroku-button.svg",
+  "keywords": ["python", "react", "fastapi", "three.js", "ai"],
+  "buildpacks": [
+    {
+      "url": "heroku/python"
+    },
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "environments": {
+    "test": {
+      "scripts": {
+        "test": "pytest maestro/backend/tests"
+      }
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql",
+      "options": {
+        "version": "12"
+      }
+    }
+  ]
+}
